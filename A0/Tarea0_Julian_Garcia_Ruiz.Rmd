@@ -4,7 +4,6 @@ author: "Julián García Ruiz"
 date: "11/9/2021"
 output:
   html_document: default
-  pdf_document: default
 subtitle: Tarea 0
 ---
 
@@ -144,7 +143,7 @@ mpg2 %>%
 Descarga el fichero census.dta. Averigua de qué tipo de fichero se trata y usa la herramienta Import DataSet del panel Environment de Rstudio para leer con R los datos de ese fichero. Asegúrate de copiar en esta práctica los dos primeros comandos que llevan a cabo la importación (excluye el comando View) y que descubrirás al usar esa herramienta. Después completa los siguientes apartados con esos datos y usando dplyr y ggplot:
 
 ```{r results='hide'}
-census <- read_dta("C:/Users/julia/OneDrive/Julian/Master/Master ICADE/Asignatura/Fundamentos Matemáticos/garcia_julian/garcia_julian/A1/census.dta")
+census <- read_dta("C:/Users/julia/OneDrive/Julian/Master/Master ICADE/Asignatura/Fundamentos Matemáticos/garcia_julian/garcia_julian/A0/census.dta")
 ```
 
  + ¿Cuáles son las poblaciones totales de las regiones censales?
