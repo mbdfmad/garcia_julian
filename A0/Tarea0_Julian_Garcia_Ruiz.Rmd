@@ -1,0 +1,242 @@
+---
+title: "Master en Big Data. Fundamentos Matemáticos del Análisis de Datos (FMAD)."
+author: "Julián García Ruiz"
+date: "11/9/2021"
+output:
+  html_document: default
+  pdf_document: default
+subtitle: Tarea 0
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Librerias
+
+Aquí instalaremos las librerías necesarias.
+
+```{r results='hide', message=FALSE}
+library(dplyr)
+library(tinytex) # Crear PDF con Latex
+library(kableExtra)
+library(tidyverse)
+library(haven) # Importar datos
+library(ggplot2)
+```
+
+
+# Ejercicio 1 
+
+Usando la función sample crea un vector dado_honesto con 100 números del 1 al 6. Haz una tabla de frecuencias absoluta (de dos maneras, con table y dplyr) y una tabla de frecuencias relativas.
+
+```{r warning=FALSE, results='asis'}
+
+dado_honesto <- data.frame(x = sample(c(1:6), 100, replace=T))
+
+frecuencia1 <- data.frame(table(dado_honesto), prop.table(table(dado_honesto)))[c(1,2,4)]
+```
+
+```{r echo=FALSE}
+colnames(frecuencia1)[c(1:3)] <- c("Dado", "Absoluta", "Relativa") # Cambio nombre
+
+frecuencia1 %>%
+  kable(align = "c") %>%
+  kableExtra::kable_styling(full_width=F)
+```
+
+
+Ahora se calculará la tabla de frecuencia absoluta y relativa con dplyr.
+
+```{r warning=FALSE, results='asis'}
+
+dado_honesto %>%
+  group_by(x) %>%
+  summarise(n = n()) %>%
+  mutate(Relativa = n/sum(n)) %>%
+  kable(align = 'c') %>%
+  kableExtra::kable_styling(full_width=F)
+
+```
+
+# Ejercicio 2
+
+A continuación crea un nuevo vector dado_cargado de manera que la probabilidad de que el número elegido valga 6 sea el doble que la probabilidad de elegir cualquiera de los cinco números restantes. Lee la ayuda de sample si lo necesitas. De nuevo, haz tablas de frecuencias absolutas y relativas de este segundo vector. 
+
+```{r warning=FALSE, results='asis'}
+
+dado_cargado <- data.frame(x = sample(c(1:6), 100, replace=T, prob=c(rep(0.8/5, 5), 0.2)))
+
+frecuencia2 <- data.frame(table(dado_cargado), prop.table(table(dado_cargado)))[c(1,2,4)]
+```
+
+```{r echo=FALSE}
+colnames(frecuencia2)[c(1:3)] <- c("Dado", "Absoluta", "Relativa") # Cambio nombre
+
+frecuencia2 %>%
+  kable(align = "c") %>%
+  kableExtra::kable_styling(full_width=F)
+```
+
+
+
+Lo mismo, pero ahora con dplyr.
+
+```{r warning=FALSE, results='asis'}
+
+dado_cargado %>%
+  group_by(x) %>%
+  summarise(n = n()) %>%
+  mutate(Relativa = n/sum(n)) %>%
+  kable(align = 'c') %>%
+  kableExtra::kable_styling(full_width=F)
+
+```
+# Ejercicio 3
+
+Utiliza las funciones rep y seq para crear tres vectores v1, v2 y v3 con estos elementos respectivamente.
+  
+```{r warning=FALSE}
+
+v1 <- rep(c(4:1), each= 4)
+  
+v2 <- rep(c(1:5), c(1:5))
+  
+v3 <- rep(c(1:4), times = 4)
+
+```
+
+```{r echo=FALSE}
+vectores <- t(data.frame(Vector1 = v1, Vector2 = c(v2, NA), Vector3 = v3))
+
+vectores %>% 
+  kable(align = 'c') %>%
+  kableExtra::kable_styling(full_width=F) %>% 
+  column_spec(1, bold = T, border_right = T) %>% 
+  footnote(general = "El NA, sale ya que lo he convertido a data.framey tienen que ser del mismo tamaño ")
+```
+
+# Ejercicio 4
+
+Utilizando la tabla mpg de la librería tidyverse crea una tabla mpg2 que:
+  
+  + Contenga las filas en las que la variable class toma el valor pickup.
+  
+  + Y las columnas de la tabla original cuyos nombres empiezan por c. No se trata de que las selecciones a mano, por sus nombres. Busca información sobre funciones auxiliares para select.
+
+```{r}
+mpg2 <- mpg %>% 
+  select(starts_with('c')) %>% 
+  filter(class == 'pickup') 
+
+```
+
+```{r echo=FALSE}
+
+mpg2 %>% 
+  kable(align = 'c') %>%
+  kableExtra::kable_styling(full_width=F) %>% 
+  scroll_box(height = '200px')
+```
+
+# Ejercicio 5
+
+Descarga el fichero census.dta. Averigua de qué tipo de fichero se trata y usa la herramienta Import DataSet del panel Environment de Rstudio para leer con R los datos de ese fichero. Asegúrate de copiar en esta práctica los dos primeros comandos que llevan a cabo la importación (excluye el comando View) y que descubrirás al usar esa herramienta. Después completa los siguientes apartados con esos datos y usando dplyr y ggplot:
+
+```{r results='hide'}
+census <- read_dta("C:/Users/julia/OneDrive/Julian/Master/Master ICADE/Asignatura/Fundamentos Matemáticos/garcia_julian/garcia_julian/A1/census.dta")
+```
+
+ + ¿Cuáles son las poblaciones totales de las regiones censales?
+ 
+```{r}
+grafico <- census %>% 
+  group_by(region) %>% 
+  summarise(Total = sum(pop)) 
+```
+
+```{r echo=FALSE}
+grafico %>% 
+  kable(align = "c") %>%
+  kableExtra::kable_styling(full_width=F)
+```
+
+
+ + Representa esas poblaciones totales en un diagrama de barras (una barra por región censal)
+
+ 
+```{r out.width='50%', fig.align='center'}
+grafico$region <- as.factor(grafico$region) # Lo convertimos a factor, para poder graficar los distintos niveles
+
+ggplot(grafico, aes(x=region, y=Total, fill=region)) +
+  geom_bar(stat= 'identity') +
+  scale_fill_manual(values = c("darkgreen", "purple", "black", "red")) +
+  ggtitle("Poblacion total por región") +
+  theme(plot.title = element_text(color = "red", face = "bold"))
+
+```
+
+ + Ordena los estados por población, de mayor a menor.
+
+```{r}
+census1 <- census %>% 
+  select(state, pop) %>% 
+  arrange(desc(pop))
+```
+
+```{r echo=FALSE}
+census1 %>% 
+  kable(align = 'c') %>%
+  kableExtra::kable_styling(full_width=F) %>% 
+  scroll_box(height = '200px') 
+```
+
+ + Crea una nueva variable que contenga la tasa de divorcios /matrimonios para cada estado.
+ 
+```{r}
+census <- census %>% 
+  mutate(Tasa_Divorcios = divorce/marriage)
+```
+
+```{r echo=FALSE}
+census2 <- census %>% 
+  select(state, Tasa_Divorcios)
+
+census2 %>% 
+  kable(align = 'c') %>%
+  kableExtra::kable_styling(full_width=F) %>% 
+  scroll_box(height = '200px')  
+```
+
+ + Si nos preguntamos cuáles son los estados más envejecidos podemos responder de dos maneras. Mirando la edad mediana o mirando en qué estados la franja de mayor edad representa una proporción más alta de la población total. Haz una tabla en la que aparezcan los valores de estos dos criterios, ordenada según la edad mediana decreciente y muestra los 10 primeros estados de esa tabla.
+
+```{r}
+census <- census %>% 
+  mutate(Proporcion = pop65p/pop)
+```
+
+```{r echo=FALSE}
+census3 <- census %>% 
+  select(state, medage, Proporcion) %>% 
+  arrange(desc(medage))
+
+census3 %>% 
+  kable(align = 'c') %>%
+  kableExtra::kable_styling(full_width=F) %>% 
+  scroll_box(height = '200px')  
+```
+
+ + Haz un histograma (con 10 intervalos) de los valores de la variable medage (edad mediana) y con la curva de densidad de la variable superpuesta.
+
+```{r out.width='50%', fig.align='center'}
+ggplot(census, aes(x=medage)) +
+  geom_histogram(aes(y = stat(density)), bins = 10, fill = "darkgreen", color = "red") +
+  geom_density(color =  "blue") +
+  ggtitle("Histograma con edad media y su curva de densidad") +
+  theme(plot.title = element_text(color = "red", face = "bold"))
+```
+
+
+
+
+
