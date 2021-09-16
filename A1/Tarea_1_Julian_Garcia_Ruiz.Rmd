@@ -1,0 +1,401 @@
+---
+title: "Master en Big Data. Fundamentos Matemáticos del Análisis de Datos (FMAD)."
+author: "Julián García Ruiz"
+date: "11/9/2021"
+output:
+  html_document: default
+subtitle: Tarea 1
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r results='hide', message=FALSE}
+library(dplyr)
+library(tinytex) # Crear PDF con Latex
+library(kableExtra)
+library(tidyverse)
+library(haven) # Importar datos
+library(ggplot2)
+library(patchwork)
+library(nycflights13)
+```
+
+# Ejercicio 1: Análisis exploratorio de un conjunto de datos y operaciones con dplyr.
+
++ Vamos a utilizar el conjunto de datos contenido en el fichero (es un enlace):  
+[cholesterol.csv](https://gist.githubusercontent.com/fsansegundo/ee991e53e1a571dd34034c42b5516eae/raw/2206455b5772e90c5a2a24a3f42a84408fd1d1c5/cholesterol.csv)  
+Los datos proceden de un estudio realizado en la *University of Virginia School of Medicine* que investiga la prevalencia de la obesidad, la diabetes y otros factores de riesgo cardiovascular. Se puede encontrar más información sobre el fichero en este enlace:  
+[https://biostat.app.vumc.org/wiki/pub/Main/DataSets/diabetes.html](https://biostat.app.vumc.org/wiki/pub/Main/DataSets/diabetes.html)  
+
++ Carga el conjunto de datos en un data.frame de R llamado `chlstrl`.
+
+```{r}
+enlace <- 'https://gist.githubusercontent.com/fsansegundo/ee991e53e1a571dd34034c42b5516eae/raw/2206455b5772e90c5a2a24a3f42a84408fd1d1c5/cholesterol.csv'
+
+chlstrl <- read.table(file=enlace, header=TRUE, sep = ',')
+```
+
+Mostramos las 5 primeras filas, para saber información de la base de datos.
+
+```{r echo=FALSE}
+head(chlstrl) %>%
+  kable(align = "c") %>%
+  kableExtra::kable_styling(full_width=F)
+```
+
++ Empezaremos por información básica sobre el conjunto de datos. Cuántas observaciones contiene, cuáles son las variables y de qué tipos,...
+
+```{r}
+str(chlstrl)
+
+summary(chlstrl) %>% 
+  kable(align = "c") %>%
+  kableExtra::kable_styling(full_width=F)
+```
+
++ Asegúrate de comprobar si hay datos ausentes y localízalos en la tabla. 
+
+Como ya hemos visto en la tabla anterior, la variable chol tiene 1 valor ausente, ... De todas formas, ahora lo veremos con otro codigo.
+
+Vemos el número de valores ausentes NA's para cada una de las variables.
+
+```{r}
+t(apply(is.na(chlstrl), 2, sum)) %>% 
+  kable(align = "c") %>%
+  kableExtra::kable_styling(full_width=F) 
+```
+
+Vemos la posición donde se encuentra cada uno de los valores ausentes.
+
+```{r}
+t(which(is.na(chlstrl))) %>% 
+  kable(align = "c") %>%
+  kableExtra::kable_styling(full_width=F)   
+```
+
++ El análisis exploratorio (numérico y gráfico) debe cubrir todos los tipos de variable de la tabla. Es decir, que al menos debes estudiar una variable por cada tipo de variable presente en la tabla. El análisis debe contener, al menos:
+  - Para las variables cuantittativas (continuas o discretas).  
+    Resumen numérico básico.  
+    Gráficas (las adecuadas, a ser posible más de un tipo de gráfico).  
+  - Variables categóricas (factores).  
+    Tablas de frecuencia (absolutas y relativas).  
+    Gráficas (diagrama de barras).  
+
+En nuestro caso, vamos a elegir la variable waist, que hace referencia a la variable cintura
+
+Para el resumén numérico, veremos los principales estadísticos de la variable, como la media, los valores minímos y máximos.
+
+```{r}
+summary(chlstrl[6]) %>% 
+  kable(align = "c") %>%
+  kableExtra::kable_styling(full_width=F)     
+```
+Ahora, que sabemos los valores de nuestros datos, nos podemos preguntar como se relacciona la variable waist con el resto de variables, para ello usaremos la gráfica "scatter plot" o nube de puntos.
+
+```{r out.width='75%', fig.align='center'}
+chlstrl2 <- chlstrl[ , !(names(chlstrl) %in% c("gender"))] # Quitamos la variable gender, para poder realizar el scatter plot
+
+pairs(chlstrl2)
+```
+
+A simple vista, vemos que la variable "waist" tiene una relación lineal con la variable "weight" que es el peso del encuestado, y con la variable "hip" que es el hueso de la cadera. 
+
+Esto tiene sentido, ya que una persona con una mayor cintura, tendrá un mayor peso y también un mayor hueso de la cadera.
+
+De las variables anteriores que tienen una relación lineal, veremos como se relaciona con la variable genero. Para ello dibujaremos la relación linea que tienen dependiendo el genero.
+
+
+
+```{r warning=FALSE, fig.align='center'}
+
+grafico1 <- chlstrl %>%
+  ggplot(aes(x=waist, 
+             y=weight, 
+             color=factor(gender)))+
+  geom_point()+
+  geom_smooth(method="lm",se = FALSE)  
+
+
+grafico2 <- chlstrl %>%  
+  ggplot(aes(x=waist, 
+             y=hip, 
+             color=factor(gender)))+
+  geom_point()+
+  geom_smooth(method="lm",se = FALSE)   
+
+grafico1 + grafico2
+```
+
+Como se observa, en ambas variables los hombres "male" tienden a tener valores más altos que las mujeres "female".
+
+
+Una vez terminado con las variables cuantitativas, haremos un análisis de la variable cualitativa.
+
+La tabla de frecuencia, nos muestra que nuestros datos están más o menos balanceados, aunque predominan las mujeres con un 58%.
+
+```{r}
+chlstrl %>%
+  group_by(gender) %>%
+  summarise(n = n()) %>%
+  mutate(Relativa = n/sum(n)) %>%
+  kable(align = 'c') %>%
+  kableExtra::kable_styling(full_width=F)
+```
+Ahora representaremos esto con un histograma.
+
+```{r out.width='50%', fig.align='center'}
+  barplot(table(chlstrl$gender), col=c("red","blue"))
+```
+
++ Los valores de `height` y `weight` están en pulgadas (inches) y libras (pounds) respectivamente. Una libra son $\approx$ 0.454kg y una pulgada son $\approx$ 0.0254m.  Usa dplyr para convertir esas columnas a metros y kilogramos respectivamente.  Las nuevas columnas deben llamarse igual que las originales. 
+
+```{r}
+chlstrl <- chlstrl %>% 
+  mutate(height = round(height * 0.0254,2), weight = round(weight * 0.454, 2))
+
+head(chlstrl) %>% 
+  kable(align = "c") %>%
+  kableExtra::kable_styling(full_width=F)
+  
+```
+
++ Ahora usa esos valores de `height` y `weight` para añadir una nueva columna llamada BMI, definida mediante:
+$$BMI = \dfrac{weight}{height^2}$$
+```{r}
+chlstrl <- chlstrl %>% 
+  mutate(BMI = round(weight/(height^2), 2))
+
+head(chlstrl) %>% 
+  kable(align = "c") %>%
+  kableExtra::kable_styling(full_width=F)
+```
+
++ Crea una nueva columna llamada `ageGroup` dividiendo la edad en los siguientes tres niveles:
+
+```{r}
+chlstrl <- chlstrl %>% 
+  mutate(ageGroup = ifelse(age %in% 11:40, "11-40",
+                           ifelse(age %in% 41:70, "41-70",
+                                  ifelse(age %in% 71:100, "71-100", "no"))))
+
+head(chlstrl) %>% 
+  kable(align = "c") %>%
+  kableExtra::kable_styling(full_width=F)
+```
+
++ Usando `dplyr` calcula cuántas observaciones hay en cada nivel de `ageGroup` (indicación: usa `group_by`). Ahora, usando aquellas observaciones que corresponden a mujeres, ¿cuál es la media del nivel de colesterol y de BMI en cada uno de esos grupos de edad?
+
+```{r}
+chlstrl %>%
+  group_by(ageGroup) %>%
+  summarise(n = n()) %>% 
+  kable(align = 'c') %>%
+  kableExtra::kable_styling(full_width=F)
+```
+
+```{r}
+chlstrl %>%
+  group_by(ageGroup) %>%
+  filter(gender == "female") %>% 
+  summarise(mean(chol, na.rm = T), mean(BMI, na.rm=T)) %>% 
+  kable(align = 'c') %>%
+  kableExtra::kable_styling(full_width=F) 
+```
+
+# Ejercicio 2: Funciones de R.
+
++ Crea una función de R llamada `cambiosSigno` que dado un vector `x` de números enteros no nulos, como 
+    ```{r echo=FALSE, comment=NULL}
+    set.seed(2019)
+    x = sample(c(-1, 1), 9, replace = TRUE) * sample(1:20, 9, replace = TRUE)
+    cat(paste0(x, sep=", "))
+    ```
+  calcule cuántos cambios de signo ha habido. Es decir, cuántas veces el signo de un elemento es distinto del signo del elemento previo. Por ejemplo, en el vector anterior hay 4 cambios de signo (en las posiciones 3, 4, 7 y 8). 
+  
+```{r}
+
+x <- sample(c(-100:1, 1:100), 20, replace = T) #Nuevo vector de 20 números sin incluir el 0
+
+cambiosSigno <- function(x) {
+  i <- 1
+  result = c()
+
+  for (s in x) {
+    if (i == 1) {
+      result[i] <- FALSE
+    } else if (s < 0 & x[i-1] > 0){
+      result[i] <- TRUE
+    } else if (s > 0 & x[i-1] < 0) {
+      result[i] <- TRUE
+    } else {
+      result[i] <- FALSE
+    }
+    i <- i+1
+  }
+  
+  return(sum(result))
+}
+```
+
++ Modifica la función para que devuelva como resultado las posiciones donde hay cambios de signo. Llama `cambiosSignoPos(x)` a esa otra función. Por ejemplo, para el vector anterior el resultado de esta función sería
+    ```{r echo=FALSE, results='asis'}
+    cat("[1] 3 4 7 8")
+    ```
+    
+    También se valorará que incluyas en el código como usar `sample` para generar vectores aleatorios de 20 enteros *no nulos* (el vector debe poder tomar valores positivos y negativos).
+
+```{r}
+
+posiciionesCambiosSigno <- function(x) {
+  i <- 1
+  result = c()
+
+  for (s in x) {
+    if (i == 1) {
+      result[i] <- FALSE
+    } else if (s < 0 & x[i-1] > 0){
+      result[i] <- TRUE
+    } else if (s > 0 & x[i-1] < 0) {
+      result[i] <- TRUE
+    } else {
+      result[i] <- FALSE
+    }
+    i <- i+1
+  }
+  
+return(which(result == TRUE))
+}
+```
+
+Una vez tenemos configuradas las dos funciones las mostraremos.
+
+```{r}
+cat("Vector:", x)
+cat("Cantidad de cambios de signo:", cambiosSigno(x))
+cat("Posiciones de los cambios de posicion:", posiciionesCambiosSigno(x))
+```
+# Ejercicio 3. R4DS.
+
+Es recomendable que esta semana del curso  hagas al menos una lectura somera de los Capítulos 1 a 5 de [R for Data Science (R4DS), de H. Wickham](https://r4ds.had.co.nz/index.html), con énfasis especial en los Capítulos 3 y 5 (los capítulos 1, 2 y 4 son muy breves). Los siguientes apartados pretenden motivar esa lectura y por eso mismo pueden resultar un poco más laboriosos.  
+
++ Haz el [ejercicio 6 de la Sección 3.6.1 de R4DS](https://r4ds.had.co.nz/data-visualisation.html#exercises-3).
+
+  - Recreate the R code necessary to generate the following graphs.
+
+```{r out.width='75%', fig.align='center'}
+grafica1 <-ggplot(mpg, aes(x = displ, y = hwy)) +
+  geom_point() +
+  geom_smooth(se = FALSE)
+
+grafica2 <- ggplot(mpg, aes(x = displ, y = hwy)) +
+  geom_smooth(mapping = aes(group = drv), se = FALSE) +
+  geom_point()
+
+grafica3 <- ggplot(mpg, aes(x = displ, y = hwy, colour = drv)) +
+  geom_point() +
+  geom_smooth(se = FALSE)
+
+grafica4 <- ggplot(mpg, aes(x = displ, y = hwy)) +
+  geom_point(aes(colour = drv)) +
+  geom_smooth(se = FALSE)
+
+grafica5 <- ggplot(mpg, aes(x = displ, y = hwy)) +
+  geom_point(aes(colour = drv)) +
+  geom_smooth(aes(linetype = drv), se = FALSE)
+
+grafica6 <- ggplot(mpg, aes(x = displ, y = hwy)) +
+  geom_point(size = 4, color = "white") +
+  geom_point(aes(colour = drv))
+
+
+gridExtra::grid.arrange(grafica1, grafica2, grafica3, grafica4, grafica5, grafica6, nrow = 3) 
+```
+
++ Haz el [ejercicio 1 de la Sección 5.2.4 de R4DS](https://r4ds.had.co.nz/transform.html#exercises-8). 
+
+  - Had an arrival delay of two or more hours
+  
+```{r}
+tab1 <- flights %>% 
+  filter(arr_delay >= 120) 
+
+head(tab1) %>% 
+  kable(align = 'c') %>%
+  kableExtra::kable_styling(full_width=F) %>% 
+  scroll_box(height = '200px', width = '100%')    
+```
+
+  - Flew to Houston (IAH or HOU)
+  
+```{r}
+tab2 <- flights %>% 
+  filter(dest == 'IAH' | dest == 'HOU') 
+
+head(tab2) %>% 
+  kable(align = 'c') %>%
+  kableExtra::kable_styling(full_width=F) %>% 
+  scroll_box(height = '200px', width = '100%')    
+```
+
+  - Were operated by United, American, or Delta
+  
+```{r}
+tab3 <- flights %>% 
+  filter(carrier %in% c('AA', 'DL', 'UA')) 
+
+head(tab3) %>% 
+  kable(align = 'c') %>%
+  kableExtra::kable_styling(full_width=F) %>% 
+  scroll_box(height = '200px', width = '100%')    
+```
+
+  - Departed in summer (July, August, and September)
+  
+```{r}
+tab4 <- flights %>% 
+  filter(month >= 7, month <= 9) 
+
+head(tab4) %>% 
+  kable(align = 'c') %>%
+  kableExtra::kable_styling(full_width=F) %>% 
+  scroll_box(height = '200px', width = '100%')    
+```
+
+  - Arrived more than two hours late, but didn’t leave late
+  
+```{r}
+tab5 <- flights %>% 
+  filter(arr_delay > 120, dep_delay <= 0) 
+
+head(tab5) %>% 
+  kable(align = 'c') %>%
+  kableExtra::kable_styling(full_width=F) %>% 
+  scroll_box(height = '200px', width = '100%')    
+```
+
+  - Were delayed by at least an hour, but made up over 30 minutes in flight
+  
+```{r}
+tab6 <- flights %>% 
+  filter(dep_delay >= 60, dep_delay - arr_delay >30) 
+
+head(tab6) %>% 
+  kable(align = 'c') %>%
+  kableExtra::kable_styling(full_width=F) %>% 
+  scroll_box(height = '200px', width = '100%')    
+```
+
+  - Departed between midnight and 6am (inclusive)
+  
+  
+```{r}
+tab7 <- flights %>% 
+  filter(dep_time <= 600 | dep_time == 2400) 
+
+head(tab7) %>% 
+  kable(align = 'c') %>%
+  kableExtra::kable_styling(full_width=F) %>% 
+  scroll_box(height = '200px', width = '100%')    
+```
