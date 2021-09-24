@@ -1,0 +1,291 @@
+---
+title: "Master en Big Data. Fundamentos Matemáticos del Análisis de Datos (FMAD)."
+author: "Julián García Ruiz"
+date: "24/9/2021"
+output:
+  html_document: default
+subtitle: Tarea 2
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r results='hide', message=FALSE}
+library(dplyr)
+library(tinytex) # Crear PDF con Latex
+library(kableExtra)
+library(tidyverse)
+library(haven) # Importar datos
+library(ggplot2)
+```
+
+# Ejercicio 1. Simulando variables aleatorias discretas.
+
+**Apartado 1:** La variable aleatoria discreta $X1$ tiene esta tabla de densidad de probabilidad (es la variable que se usa como ejemplo en la Sesión ):
+$$
+\begin{array}{|c|c|c|c|c|c|c|}
+\hline
+\text{valor de }X1 & 0 & 1 & 2 & 3 \\
+\hline
+\text{Probabilidad de ese valor }P(X = x_i) & \dfrac{64}{125} &
+\dfrac{48}{125}& \dfrac{12}{125} & \dfrac{1}{125}\rule{0mm}{6mm} \\[3mm]
+\hline
+\end{array}
+$$
+
+Calcula la media y la varianza teóricas de esta variable.
+
+```{r}
+# Creo los vectores de valor de X1 con sus probabilidades
+
+x1 <- c(0, 1, 2, 3)
+p1 <- c(64/125, 48/125, 12/125, 1/125)
+
+media_x1 <- sum(x1*p1)
+varianza_x1 <- sum(((x1 - media_x1)^2)*p1)
+
+cat("Media:", media_x1)
+cat("Varianza:", varianza_x1)
+```
+
+**Apartado 2:**  Combina `sample` con `replicate` para simular cien mil muestras de tamaño 10 de esta variable $X1$. Estudia la distribución de las medias muestrales como hemos hecho en ejemplos previos, ilustrando con gráficas la distribución de esas medias muestrales. Cambia después el tamaño de la muestra a 30 y repite el análisis. 
+
+Lo primero que haremos para una muestra de tamaño 10.
+
+```{r out.width='75%', fig.align='center'}
+muestra10 <- replicate(100000, {
+  x = sample(0:3, size = 10, replace = TRUE, prob = c(64/125, 48/125, 12/125, 1/125))
+  mean(x)
+})
+
+muestra10 <- as.data.frame(muestra10) # Lo convertimos a un data frame para poder usar ggplot
+
+grafica10 <- ggplot(muestra10) +
+  geom_histogram(aes(x = muestra10, y = ..density..),
+                 binwidth = 0.1, fill = "blue", color = "black")
+
+x <- seq(0, 1.7, length.out=100)
+df <- with(muestra10, data.frame(x = x, y = dnorm(x, mean(muestra10), sd(muestra10))))
+
+grafica10 + geom_line(data = df, aes(x = x, y = y), color = "red")
+```
+
+Ahora se hará la de tamaño 30.
+
+```{r out.width='75%', fig.align='center'}
+muestra30 <- replicate(100000, {
+  x = sample(0:3, size = 30, replace = TRUE, prob = c(64/125, 48/125, 12/125, 1/125))
+  mean(x)
+})
+
+muestra30 <- as.data.frame(muestra30) # Lo convertimos a un data frame para poder usar ggplot
+
+grafica30 <- ggplot(muestra30) +
+  geom_histogram(aes(x = muestra30, y = ..density..),
+                 binwidth = 0.1, fill = "blue", color = "black")
+
+x <- seq(0, 1.7, length.out=100)
+df <- with(muestra30, data.frame(x = x, y = dnorm(x, mean(muestra30), sd(muestra30))))
+
+grafica30 + geom_line(data = df, aes(x = x, y = y), color = "red")
+```
+
+**Apartado 3:** La variable aleatoria discreta $X2$ tiene esta tabla de densidad de probabilidad:
+$$
+\begin{array}{|c|c|c|c|c|c|}
+\hline
+\text{valor de }X2 & 0 & 1 & 2 \\
+\hline
+\text{Probabilidad de ese valor }P(X = x_i) & \dfrac{1}{2} &
+\dfrac{1}{4}&  \dfrac{1}{4}\rule{0mm}{6mm} \\[3mm]
+\hline
+\end{array}
+$$
+Suponemos que $X1$ y $X2$ son independientes. ¿Qué valores puede tomar la suma $X1 + X2$? ¿Cuál es su tabla de probabilidad?
+
+Los valores de la suma son 0, 1, 2, 3, 4 y 5, y para calcular la probabilidad de cada uno se hará de la siguiente forma:
+
+```{r}
+x2 <- c(0:3)
+p2 <- c(1/2, 1/4, 1/4)
+
+valor_0 <- p1[1] * p2[1]
+valor_1 <- p1[1] * p2[2] + p1[2] * p2[1] 
+valor_2 <- p1[3] * p2[1] + p1[1] * p2[3] + p1[2] * p2[2]
+valor_3 <- p1[4] * p2[1] + p1[3] * p2[2] + p1[2] * p2[3]
+valor_4 <- p1[4] * p2[2] + p1[3] * p2[3]
+valor_5 <- p1[4] * p2[3]
+
+cat("La suma de los 5 valores debe dar 1 para que esté bien: ", sum(valor_0, valor_1, valor_2, valor_3, valor_4, valor_5))
+
+probabilidades <- data.frame(valor_0 ,valor_1, valor_2, valor_3, valor_4, valor_5)
+colnames(probabilidades) = c(0:5)
+
+probabilidades %>%
+  kable(align = 'c') %>%
+  kableExtra::kable_styling(full_width=F) 
+```
+
+**Apartado 4:** Calcula la media teórica de la suma $X_1 + X_2$. Después usa `sample` y `replicate` para simular cien mil *valores* de esta variable suma. Calcula la media de esos valores. *Advertencia:* no es el mismo tipo de análisis que hemos hecho en el segundo apartado. 
+
+Primero calculamos la media teorica:
+
+```{r}
+suma <- c(0:5)
+p_suma <- c(valor_0, valor_1, valor_2, valor_3, valor_4, valor_5)
+
+media_suma <- sum(suma * p_suma)
+
+cat("La media teorica es: ", media_suma)
+```
+
+Ahora calcularemos la media de los 100.000 valores:
+
+```{r}
+nuevosValores <- replicate(sample(x = suma, size = 1 ,prob = p_suma), n = 100000)
+
+cat("La media de los nuevos valores es: ", mean(nuevosValores))
+```
+
+# Ejercicio 2. Datos limpios
+
++ Descarga el fichero de este enlace  
+
+[https://gist.githubusercontent.com/fernandosansegundo/471b4887737cfcec7e9cf28631f2e21e/raw/b3944599d02df494f5903740db5acac9da35bc6f/testResults.csv](https://gist.githubusercontent.com/fernandosansegundo/471b4887737cfcec7e9cf28631f2e21e/raw/b3944599d02df494f5903740db5acac9da35bc6f/testResults.csv) 
+
++ Este fichero contiene las notas de los alumnos de una clase, que hicieron dos tests cada semana durante cinco semanas. La tabla de datos no cumple los principios de *tidy data* que hemos visto en clase. Tu tarea en este ejercicio es explicar por qué no se cumplen y obtener una tabla de datos limpios con la misma información usando *tidyR*.  
+**Indicación:** lee la ayuda de la función `separate` de *tidyR*.
+
+```{r}
+enlace <- 'https://gist.githubusercontent.com/fernandosansegundo/471b4887737cfcec7e9cf28631f2e21e/raw/b3944599d02df494f5903740db5acac9da35bc6f/testResults.csv'
+
+notas <- read.table(file=enlace, header=TRUE, sep = ',')
+
+head(notas) %>% 
+  kable(align = "c") %>%
+  kableExtra::kable_styling(full_width=F)
+```
+
+Si observamos la tabla, vemos que la variable genero y edad están en la misma variable, cuando deberían ser dos variables diferentes para corregir esto haremos dos vairables nuevas, una para el genero y otra para la edad.
+
+```{r}
+notas <- notas %>% 
+  separate(col = gender_age, into = c("gender", "age"), convert = T)
+
+head(notas) %>% 
+  kable(align = "c") %>%
+  kableExtra::kable_styling(full_width=F)
+```
+
+Una vez separado, ahora juntaremos las 5 semanas en una, lo que implicará multiplicar por 5 el tamaño de la tabla a lo largo.
+
+```{r}
+notas <- notas %>% 
+  pivot_longer(week1:week5, names_to = "week") %>% 
+  separate(week, into = c("numero", "week"), convert = T, sep = 4) %>% 
+  select(-numero) #Quitamos la variable numero
+
+
+head(notas) %>% 
+  kable(align = "c") %>%
+  kableExtra::kable_styling(full_width=F)
+```
+
+# Ejercicio 3. Lectura de R4DS.
+
+Continuando con nuestra *lectura conjunta* de este libro, si revisas el índice verás que hemos cubierto (holgadamente en algún caso) el contenido de los Capítulos 6, 8, 9, 10 y 11. Todos esos Capítulos son relativamente ligeros.  Por eso esta semana conviene detenerse un poco en la lectura de los Capítulos 7 y 12, que son los más densos en información. Y como motivación os proponemos un par de ejercicios, uno por cada uno de esos capítulos. 
+
++ Haz el [ejercicio 2 de la Sección 7.5.1.1 de R4DS](https://r4ds.had.co.nz/exploratory-data-analysis.html#exercises-17). Las ideas de esa sección son importantes para nuestro trabajo de las próximas sesiones.
+
+Primero dibujamos los scatter plot de las variables continuas.
+
+```{r out.width='75%', fig.align='center'}
+diamonds1 <- diamonds %>% 
+  select(carat ,depth, table, price)
+
+pairs(diamonds1)
+```
+
+Ahora dibujamos los boxplot de las variables cualitativas.
+
+```{r out.width='75%', fig.align='center'}
+ggplot(diamonds) + 
+  geom_boxplot(aes(x = cut, y = price))
+
+ggplot(diamonds) + 
+  geom_boxplot(aes(x = color, y = price))
+
+ggplot(diamonds )+ 
+  geom_boxplot(aes(x = clarity, y = price))
+```
+Si observamos las gráficas, podemos decir que la que mejor se relacciona con el precio es la variable carat, además vemos que cuanto más aumenta la variable "carat" mayor será el precio.
+
+Ahora veremos su correlación.
+
+```{r}
+cor(diamonds$carat,diamonds$price)
+```
+Como ya se había visto antes en la gráfica la correlación es positiva y tiene un alto valor.
+
+
++ Haz el [ejercicio 4 de la Sección 12.6.1 de R4DS](https://r4ds.had.co.nz/tidy-data.html#exercises-27). ¡Aprovecha el código previo de esa sección para trabajar con datos limpios!
+
+Primero tenemos que modificar la base de datos para poder realizar el ejercicio.
+
+```{r}
+who_nuevo <- who %>% 
+  pivot_longer(
+    cols = new_sp_m014:newrel_f65, 
+    names_to = "Información", 
+    values_to = "Numero Casos", 
+    values_drop_na = T
+  )
+
+head(who_nuevo) %>% 
+  kable(align = 'c') %>%
+  kableExtra::kable_styling(full_width=F)
+```
+Ahora tendremos que sacar de la columna de información las variables estado, tipo, sexo y año.
+
+```{r}
+who_nuevo1 <- who_nuevo %>% 
+  separate(Información, c("Estado", "Tipo", "sexoaño"), sep = "_")
+
+who_nuevo2 <- who_nuevo1 %>%
+  separate(sexoaño, c("sexo", "age"), sep = 1)
+
+head(who_nuevo2) %>% 
+  kable(align = 'c') %>%
+  kableExtra::kable_styling(full_width=F)
+```
+
+Una vez que tenemos la base de datos organizada, nos dispondremos a responder a la pregunta.
+
+```{r}
+who_final <- who_nuevo2 %>% 
+  group_by(country, year, sexo) %>% 
+  summarise(casos = sum(`Numero Casos`)) 
+
+head(who_final) %>% 
+  kable(align = 'c') %>%
+  kableExtra::kable_styling(full_width=F)
+```
+Ahora haremos una gráfica donde intentaremos ilustrar esta información.
+
+```{r out.width='75%', fig.align='center'}
+who_final %>% 
+  filter(year > 1995) %>% 
+  unite(sexo_continente, country, sexo, remove = FALSE) %>%
+  ggplot() +
+  geom_line(aes(x = year, y = casos, group = sexo_continente, color = sexo))
+```
+
+
+
+
+
+
+
+
+
